@@ -14,5 +14,11 @@ Route::get('/shorts', [VideoController::class, 'getShorts']);
 // Endpoint for trending/featured videos (Vidmate style)
 Route::get('/trending', [VideoController::class, 'getTrendingVideos']);
 
+// Endpoint for playlist search
+Route::get('/playlists', [VideoController::class, 'searchPlaylists']);
+
+// Endpoint for playlist videos
+Route::get('/playlist', [VideoController::class, 'getPlaylistVideos']);
+
 Route::get('/search', [VideoController::class, 'search']);
 Route::post('/extract', [VideoController::class, 'extractInfo']);

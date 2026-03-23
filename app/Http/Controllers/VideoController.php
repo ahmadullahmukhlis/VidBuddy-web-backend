@@ -141,6 +141,69 @@ class VideoController extends Controller
         ]);
     }
 
+
+    /**
+     * Search playlists by query.
+     */
+    public function searchPlaylists(Request $request)
+    {
+        $query = trim((string) $request->input('q', ''));
+        if ($query === '') {
+            return response()->json([]);
+        }
+        $count = (int) $request->input('count', 10);
+        $count = max(1, min($count, 25));
+
+        $searchTerm = "ytsearch{$count}:{$query}";
+        $command = 'yt-dlp --dump-json --flat-playlist --yes-playlist ' . escapeshellarg($searchTerm);
+        $result = Process::run($command);
+
+        if ($result->failed()) {
+            return response()->json(['error' => 'Playlist search failed'], 500);
+        }
+
+        $lines = array_filter(explode("
+", trim($result->output())));
+        $items = array_map(fn($line) => json_decode($line), $lines);
+
+        $playlists = collect($items)
+            ->filter(fn($item) => isset($item->_type) && $item->_type === 'playlist')
+            ->map(fn($p) => [
+                'id' => $p->id ?? null,
+                'title' => $p->title ?? 'Untitled playlist',
+                'thumbnail' => $p->thumbnail ?? '',
+                'uploader' => $p->uploader ?? 'Unknown',
+                'video_count' => $p->playlist_count ?? null,
+            ])
+            ->values();
+
+        return response()->json($playlists);
+    }
+
+    /**
+     * Get videos for a playlist ID.
+     */
+    public function getPlaylistVideos(Request $request)
+    {
+        $playlistId = trim((string) $request->input('list', ''));
+        if ($playlistId === '') {
+            return response()->json(['error' => 'Playlist id is required'], 400);
+        }
+        $url = 'https://www.youtube.com/playlist?list=' . $playlistId;
+        $command = 'yt-dlp --dump-json --flat-playlist ' . escapeshellarg($url);
+        $result = Process::run($command);
+
+        if ($result->failed() || trim($result->output()) === '') {
+            return response()->json(['error' => 'Could not fetch playlist videos'], 500);
+        }
+
+        $lines = array_filter(explode("
+", trim($result->output())));
+        $videos = array_map(fn($line) => json_decode($line), $lines);
+
+        return response()->json($this->formatVideoList($videos));
+    }
+
     /**
      * Get "Famous" or Trending videos like Vidmate.
      */
