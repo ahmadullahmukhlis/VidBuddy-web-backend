@@ -11,9 +11,13 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
-    ->withMiddleware(function (Middleware $middleware): void {
-        //
-    })
+   ->withMiddleware(function (Middleware $middleware) {
+    $middleware->statefulApi(); // Enables session support for API
+    $middleware->validateCsrfTokens(except: [
+        'api/*' // Disables CSRF for your API routes so Next.js can POST
+    ]);
+})
+
     ->withExceptions(function (Exceptions $exceptions): void {
         //
     })->create();
