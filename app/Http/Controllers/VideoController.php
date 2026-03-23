@@ -172,13 +172,25 @@ class VideoController extends Controller
                 if ($item->_type === 'playlist') return true;
                 return isset($item->url) && str_contains($item->url, 'list=');
             })
-            ->map(fn($p) => [
-                'id' => $p->id ?? null,
-                'title' => $p->title ?? 'Untitled playlist',
-                'thumbnail' => $p->thumbnail ?? '',
-                'uploader' => $p->uploader ?? 'Unknown',
-                'video_count' => $p->playlist_count ?? null,
-            ])
+            ->map(function ($p) {
+                $thumb = $p->thumbnail ?? '';
+                if ($thumb === '' && isset($p->thumbnails) && is_array($p->thumbnails) && count($p->thumbnails) > 0) {
+                    $last = $p->thumbnails[count($p->thumbnails) - 1];
+                    if (is_object($last) && isset($last->url)) {
+                        $thumb = $last->url;
+                    } elseif (is_array($last) && isset($last['url'])) {
+                        $thumb = $last['url'];
+                    }
+                }
+
+                return [
+                    'id' => $p->id ?? null,
+                    'title' => $p->title ?? 'Untitled playlist',
+                    'thumbnail' => $thumb,
+                    'uploader' => $p->uploader ?? 'Unknown',
+                    'video_count' => $p->playlist_count ?? null,
+                ];
+            })
             ->values();
 
         return response()->json($playlists);
