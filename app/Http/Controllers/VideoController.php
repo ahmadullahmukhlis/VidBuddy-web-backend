@@ -14,7 +14,7 @@ class VideoController extends Controller
     public function search(Request $request)
     {
         $query = trim((string) $request->input('q', ''));
-        $count = (int) $request->input('count', 10);
+        $count = (int) $request->input('count', 12);
         $count = max(1, min($count, 25));
 
         if ($query === '') {
@@ -151,7 +151,7 @@ class VideoController extends Controller
         if ($query === '') {
             return response()->json([]);
         }
-        $count = (int) $request->input('count', 10);
+        $count = (int) $request->input('count', 12);
         $count = max(1, min($count, 25));
 
         $queryEncoded = urlencode($query);
