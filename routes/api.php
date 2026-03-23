@@ -8,6 +8,9 @@ Route::post('/download', [VideoController::class, 'getVideoInfo']);
 // Endpoint for streaming a forced download
 Route::get('/download', [VideoController::class, 'downloadFile']);
 
+// Endpoint for Shorts with pagination
+Route::get('/shorts', [VideoController::class, 'getShorts']);
+
 // Endpoint for trending/featured videos (Vidmate style)
 Route::get('/trending', [VideoController::class, 'getTrendingVideos']);
 
