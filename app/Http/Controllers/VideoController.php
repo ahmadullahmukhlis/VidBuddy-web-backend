@@ -154,20 +154,24 @@ class VideoController extends Controller
         $count = (int) $request->input('count', 10);
         $count = max(1, min($count, 25));
 
-        $searchTerm = "ytsearch{$count}:{$query}";
-        $command = 'yt-dlp --dump-json --flat-playlist --yes-playlist ' . escapeshellarg($searchTerm);
+        $queryEncoded = urlencode($query);
+        $url = "https://www.youtube.com/results?search_query={$queryEncoded}&sp=EgIQAw%3D%3D";
+        $command = 'yt-dlp --dump-json --flat-playlist --playlist-end ' . $count . ' ' . escapeshellarg($url);
         $result = Process::run($command);
 
-        if ($result->failed()) {
+        if ($result->failed() || trim($result->output()) === '') {
             return response()->json(['error' => 'Playlist search failed'], 500);
         }
 
-        $lines = array_filter(explode("
-", trim($result->output())));
+        $lines = array_filter(explode("\n", trim($result->output())));
         $items = array_map(fn($line) => json_decode($line), $lines);
 
         $playlists = collect($items)
-            ->filter(fn($item) => isset($item->_type) && $item->_type === 'playlist')
+            ->filter(function ($item) {
+                if (!isset($item->_type)) return false;
+                if ($item->_type === 'playlist') return true;
+                return isset($item->url) && str_contains($item->url, 'list=');
+            })
             ->map(fn($p) => [
                 'id' => $p->id ?? null,
                 'title' => $p->title ?? 'Untitled playlist',
