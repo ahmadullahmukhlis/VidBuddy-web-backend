@@ -110,8 +110,8 @@ class VideoController extends Controller
         $page = max(1, $page);
         $perPage = max(1, min($perPage, 20));
 
-        $totalNeeded = $page * $perPage;
-        $totalNeeded = min($totalNeeded, 60);
+        $maxLimit = 200;
+        $totalNeeded = min($page * $perPage, $maxLimit);
 
         $searchTerm = "ytsearch{$totalNeeded}:shorts";
         $command = 'yt-dlp --dump-json --flat-playlist ' . escapeshellarg($searchTerm);
@@ -121,19 +121,23 @@ class VideoController extends Controller
             return response()->json(['error' => 'Could not fetch shorts'], 500);
         }
 
-        $lines = array_filter(explode("\n", trim($result->output())));
+        $lines = array_filter(explode("
+", trim($result->output())));
         $videos = array_map(fn($line) => json_decode($line), $lines);
         $formatted = $this->formatVideoList($videos);
 
         $offset = ($page - 1) * $perPage;
         $items = $formatted->slice($offset, $perPage)->values();
-        $hasMore = $formatted->count() > ($offset + $perPage);
+        $count = $formatted->count();
+        $hasMore = $count > ($offset + $perPage) || ($count >= $totalNeeded && $totalNeeded < $maxLimit);
 
         return response()->json([
             'page' => $page,
             'per_page' => $perPage,
             'has_more' => $hasMore,
             'items' => $items,
+            'total_fetched' => $count,
+            'max_limit' => $maxLimit,
         ]);
     }
 
