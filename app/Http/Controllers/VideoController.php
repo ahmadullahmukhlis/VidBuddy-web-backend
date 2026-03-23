@@ -100,6 +100,44 @@ class VideoController extends Controller
     }
 
     /**
+     * Get Shorts with pagination.
+     */
+    public function getShorts(Request $request)
+    {
+        $page = (int) $request->input('page', 1);
+        $perPage = (int) $request->input('per_page', 5);
+
+        $page = max(1, $page);
+        $perPage = max(1, min($perPage, 20));
+
+        $totalNeeded = $page * $perPage;
+        $totalNeeded = min($totalNeeded, 60);
+
+        $searchTerm = "ytsearch{$totalNeeded}:shorts";
+        $command = 'yt-dlp --dump-json --flat-playlist ' . escapeshellarg($searchTerm);
+        $result = Process::run($command);
+
+        if ($result->failed()) {
+            return response()->json(['error' => 'Could not fetch shorts'], 500);
+        }
+
+        $lines = array_filter(explode("\n", trim($result->output())));
+        $videos = array_map(fn($line) => json_decode($line), $lines);
+        $formatted = $this->formatVideoList($videos);
+
+        $offset = ($page - 1) * $perPage;
+        $items = $formatted->slice($offset, $perPage)->values();
+        $hasMore = $formatted->count() > ($offset + $perPage);
+
+        return response()->json([
+            'page' => $page,
+            'per_page' => $perPage,
+            'has_more' => $hasMore,
+            'items' => $items,
+        ]);
+    }
+
+    /**
      * Get "Famous" or Trending videos like Vidmate.
      */
     public function getTrendingVideos()
