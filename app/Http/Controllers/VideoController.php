@@ -8,9 +8,9 @@ use Illuminate\Support\Facades\Process;
 class VideoController extends Controller
 {
     /**
-     * SEARCH: Search YouTube for keywords and return a list of videos.
+     * Get direct download links and info for any social media URL.
      */
-    public function search(Request $request)
+   public function search(Request $request)
     {
         $query = $request->input('q', 'trending'); // Default to trending if empty
         $count = $request->input('count', 10); // Number of results
@@ -71,5 +71,22 @@ class VideoController extends Controller
             'url' => "https://www.youtube.com{$v->id}",
             'views' => number_format($v->view_count ?? 0),
         ]);
+    }
+
+    /**
+     * Get "Famous" or Trending videos like Vidmate.
+     */
+    public function getTrendingVideos()
+    {
+        // Fetches top 12 trending videos from YouTube
+        $url = "https://www.youtube.com";
+        $command = "yt-dlp --dump-json --flat-playlist --playlist-end 12 \"{$url}\"";
+        
+        $result = Process::run($command);
+        $output = explode("\n", trim($result->output()));
+        
+        $videos = array_map(fn($line) => json_decode($line), $output);
+
+        return response()->json($videos);
     }
 }
