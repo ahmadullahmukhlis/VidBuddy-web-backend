@@ -1,20 +1,26 @@
 name: Daily 1000 Commits
 on:
   schedule:
-    - cron: '0 0 * * *' # Runs once a day at midnight UTC
-  workflow_dispatch: # Allows you to start it manually for testing
+    - cron: '0 0 * * *' # Runs daily at midnight
+  push:
+    branches:
+      - main # Runs whenever you push to the main branch
+  workflow_dispatch: # Allows manual start
 
 jobs:
   make-commits:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Required to push commits back to the repo
+      contents: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-      
+        with:
+          fetch-depth: 0 # Fetches all history for a cleaner push
+
       - name: Run 1000 Commits
         run: |
+          # Use [skip ci] in the message to prevent this push from triggering another run
           git config --global user.name "ahmadullahmukhlis"
           git config --global user.email "nasarimukhlis@gmail.com"
           
@@ -22,7 +28,7 @@ jobs:
           do
             echo "Commit #$i on $(date)" >> commit_log.txt
             git add commit_log.txt
-            git commit -m "Automated commit $i of 1000"
+            git commit -m "Automated commit $i of 1000 [skip ci]"
           done
           
           git push
