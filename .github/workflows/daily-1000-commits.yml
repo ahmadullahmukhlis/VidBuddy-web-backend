@@ -21,7 +21,7 @@ jobs:
           git config --global user.email "nasarimukhlis@gmail.com"
 
           # Generate a random number between 50 and 100
-          COUNT=$(( ( RANDOM % 51 )  + 50 ))
+          COUNT=$(( ( RANDOM % 10 )  + 20 ))
           echo "Generating $COUNT commits for today."
 
           TODAY=$(date -I)
