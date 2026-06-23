@@ -1,36 +1,36 @@
-name: Ultimate Contribution Generator
-on:
-  push:
-    branches: [ main ]
-  schedule:
-    - cron: '0 */4 * * *'
-  workflow_dispatch:
+# name: Ultimate Contribution Generator
+# on:
+#   push:
+#     branches: [ main ]
+#   schedule:
+#     - cron: '0 */4 * * *'
+#   workflow_dispatch:
 
-jobs:
-  make-commits:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+# jobs:
+#   make-commits:
+#     runs-on: ubuntu-latest
+#     permissions:
+#       contents: write
+#     steps:
+#       - name: Checkout Code
+#         uses: actions/checkout@v4
 
-      - name: Run Random Commits
-        run: |
-          git config --global user.name "ahmadullahmukhlis"
-          git config --global user.email "nasarimukhlis@gmail.com"
+#       - name: Run Random Commits
+#         run: |
+#           git config --global user.name "ahmadullahmukhlis"
+#           git config --global user.email "nasarimukhlis@gmail.com"
 
-          # Generate a random number between 50 and 100
-          COUNT=$(( ( RANDOM % 2 )  + 3 ))
-          echo "Generating $COUNT commits for today."
+#           # Generate a random number between 50 and 100
+#           COUNT=$(( ( RANDOM % 2 )  + 3 ))
+#           echo "Generating $COUNT commits for today."
 
-          TODAY=$(date -I)
+#           TODAY=$(date -I)
           
-          for ((i=1; i<=COUNT; i++))
-          do
-            echo "Contribution $i for $TODAY - $(date)" >> history_log.txt
-            git add history_log.txt
-            git commit -m "Contribution $i for $TODAY [skip ci]"
-          done
+#           for ((i=1; i<=COUNT; i++))
+#           do
+#             echo "Contribution $i for $TODAY - $(date)" >> history_log.txt
+#             git add history_log.txt
+#             git commit -m "Contribution $i for $TODAY [skip ci]"
+#           done
 
-          git push origin main
+#           git push origin main
