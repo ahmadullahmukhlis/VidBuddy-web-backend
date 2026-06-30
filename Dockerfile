@@ -7,7 +7,7 @@ RUN apk add --no-cache \
     libpng-dev libjpeg-turbo-dev freetype-dev libwebp-dev \
     libxml2-dev oniguruma-dev
 
-# PHP extensions (SAFE FOR LARAVEL)
+# PHP extensions (stable for Laravel)
 RUN docker-php-ext-configure gd \
     --with-freetype \
     --with-jpeg \
@@ -25,13 +25,12 @@ RUN docker-php-ext-configure gd \
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www
-
 COPY . .
 
 # Nginx config
 COPY nginx.conf /etc/nginx/http.d/default.conf
 
-# Laravel required directories + TEMP fix
+# Laravel required directories + temp fix
 RUN mkdir -p \
     storage/framework/cache/data \
     storage/framework/sessions \
@@ -40,25 +39,33 @@ RUN mkdir -p \
     storage/logs \
     bootstrap/cache
 
-# FIX: Laravel temp directory (CRITICAL for tempnam() error)
+# FORCE Laravel temp directory
 ENV TMPDIR=/var/www/storage/framework/temp
 
-# Permissions (IMPORTANT for Render)
+# DEBUG MODE (IMPORTANT)
+ENV APP_DEBUG=true
+ENV LOG_LEVEL=debug
+
+# Permissions fix (critical for Render)
 RUN addgroup -g 1000 www && adduser -G www -u 1000 -D www && \
     chown -R www:www /var/www && \
-    chmod -R 775 storage bootstrap/cache
+    chmod -R 777 storage bootstrap/cache
 
-# Install dependencies (safe for production)
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+# Install dependencies safely
+RUN composer install --no-interaction --no-dev --optimize-autoloader
 
 EXPOSE 80
 
-# Runtime startup (safe for Render)
-CMD sh -c "php artisan config:clear && \
-           php artisan route:clear && \
-           php artisan view:clear && \
-           php-fpm -D && \
-           nginx -g 'daemon off;'"
+# 🔥 FULL DEBUG STARTUP (SHOW REAL ERRORS)
+CMD sh -c "\
+    echo '--- STARTING LARAVEL DEBUG MODE ---' && \
+    chmod -R 777 storage bootstrap/cache && \
+    php artisan config:clear || true && \
+    php artisan cache:clear || true && \
+    php artisan route:clear || true && \
+    php artisan view:clear || true && \
+    php-fpm -D && \
+    nginx -g 'daemon off;'"
 
 # FROM php:8.4-fpm-alpine
 
