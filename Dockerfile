@@ -7,14 +7,19 @@ RUN apk add --no-cache \
     libpng-dev libjpeg-turbo-dev freetype-dev libwebp-dev \
     libxml2-dev oniguruma-dev
 
-# PHP extensions (IMPORTANT FOR LARAVEL)
+# PHP extensions (FIXED: removed tokenizer)
 RUN docker-php-ext-configure gd \
     --with-freetype \
     --with-jpeg \
     --with-webp && \
     docker-php-ext-install \
-    pdo pdo_mysql bcmath gd \
-    mbstring xml fileinfo tokenizer
+    pdo \
+    pdo_mysql \
+    bcmath \
+    gd \
+    mbstring \
+    xml \
+    fileinfo
 
 # Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -34,17 +39,17 @@ RUN mkdir -p \
     storage/logs \
     bootstrap/cache
 
-# Permissions (CRITICAL FIX)
+# Permissions (CRITICAL FIX for Render + Alpine)
 RUN addgroup -g 1000 www && adduser -G www -u 1000 -D www && \
     chown -R www:www /var/www && \
     chmod -R 775 storage bootstrap/cache
 
-# Install dependencies (NO cache here!)
+# Install dependencies (safe for production)
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 EXPOSE 80
 
-# IMPORTANT: do NOT cache config at build time on Render
+# Runtime startup (safe for Render)
 CMD sh -c "php artisan config:clear && \
            php artisan route:clear && \
            php artisan view:clear && \
