@@ -7,7 +7,7 @@ RUN apk add --no-cache \
     libpng-dev libjpeg-turbo-dev freetype-dev libwebp-dev \
     libxml2-dev oniguruma-dev
 
-# PHP extensions (FIXED: removed tokenizer)
+# PHP extensions (SAFE FOR LARAVEL)
 RUN docker-php-ext-configure gd \
     --with-freetype \
     --with-jpeg \
@@ -31,15 +31,19 @@ COPY . .
 # Nginx config
 COPY nginx.conf /etc/nginx/http.d/default.conf
 
-# Laravel required folders
+# Laravel required directories + TEMP fix
 RUN mkdir -p \
     storage/framework/cache/data \
     storage/framework/sessions \
     storage/framework/views \
+    storage/framework/temp \
     storage/logs \
     bootstrap/cache
 
-# Permissions (CRITICAL FIX for Render + Alpine)
+# FIX: Laravel temp directory (CRITICAL for tempnam() error)
+ENV TMPDIR=/var/www/storage/framework/temp
+
+# Permissions (IMPORTANT for Render)
 RUN addgroup -g 1000 www && adduser -G www -u 1000 -D www && \
     chown -R www:www /var/www && \
     chmod -R 775 storage bootstrap/cache
