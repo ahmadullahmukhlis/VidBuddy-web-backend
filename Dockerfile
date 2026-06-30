@@ -38,6 +38,8 @@ RUN mkdir -p \
     storage/framework/temp \
     storage/logs \
     bootstrap/cache
+    
+    RUN mkdir -p database && touch database/database.sqlite
 
 # FORCE Laravel temp directory
 ENV TMPDIR=/var/www/storage/framework/temp
