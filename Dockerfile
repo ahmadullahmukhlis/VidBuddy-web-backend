@@ -19,7 +19,14 @@ COPY . .
 # Copy your custom Nginx configuration
 COPY nginx.conf /etc/nginx/http.d/default.conf
 
-# Setup proper directory permissions for Laravel storage
+# FIX: Force-create the required Laravel directories if they don't exist
+RUN mkdir -p /var/www/storage/framework/cache/data \
+    /var/www/storage/framework/sessions \
+    /var/www/storage/framework/views \
+    /var/www/storage/logs \
+    /var/www/bootstrap/cache
+
+# Setup proper directory permissions
 RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
 
 # Install dependencies and optimize production configurations
