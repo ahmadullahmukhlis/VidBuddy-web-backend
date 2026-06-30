@@ -36,4 +36,5 @@ RUN php artisan config:cache && php artisan route:cache && php artisan view:cach
 EXPOSE 80
 
 # Run migrations at startup, then run Nginx and PHP-FPM in the foreground together
-CMD ["sh", "-c", "php artisan migrate --force && php-fpm -D && nginx -g 'daemon off;'"]
+CMD ["sh", "-c", "chmod -R 775 /var/www/storage /var/www/bootstrap/cache && php artisan config:clear && php artisan route:clear && php-fpm -D && nginx -g 'daemon off;'"]
+
