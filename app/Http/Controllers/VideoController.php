@@ -90,7 +90,7 @@ class VideoController extends Controller
             ' --extractor-args "youtube:player_client=android" ' .
             escapeshellarg($url);
 
-        $result = Process::timeout(300)->run($command);
+        $result = Process::timeout(30000)->run($command);
 
         if ($result->failed()) {
             Log::error('yt-dlp failed', [
