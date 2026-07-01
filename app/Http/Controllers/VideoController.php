@@ -72,39 +72,38 @@ class VideoController extends Controller
     | FETCH VIDEO DATA (FIXED yt-dlp)
     |--------------------------------------------------------------------------
     */
-    private function fetchVideoData(string $url)
-    {
-        // normalize short url
-        if (preg_match('/youtu\.be\/([^?]+)/', $url, $m)) {
-            $url = 'https://www.youtube.com/watch?v=' . $m[1];
-        }
-
-        $binary = $this->ytDlpBinary();
-
-        $command =
-            $binary .
-            " --dump-single-json " .
-            " --no-playlist " .
-            " --no-warnings " .
-            " --geo-bypass " .
-            ' --extractor-args "youtube:player_client=android" ' .
-            escapeshellarg($url);
-
-        $result = Process::timeout(30000)->run($command);
-
-        if ($result->failed()) {
-            Log::error('yt-dlp failed', [
-                'cmd' => $command,
-                'stderr' => $result->errorOutput(),
-                'stdout' => $result->output(),
-            ]);
-            return null;
-        }
-
-        $output = trim($result->output());
-
-        return $output ? json_decode($output) : null;
+ private function fetchVideoData(string $url)
+{
+    if (preg_match('/youtu\.be\/([^?]+)/', $url, $m)) {
+        $url = 'https://www.youtube.com/watch?v=' . $m[1];
     }
+
+    $process = new Process([
+        $this->ytDlpBinary(),
+        '--dump-json',
+        '--no-playlist',
+        '--no-warnings',
+        '--geo-bypass',
+        '--extractor-args',
+        'youtube:player_client=android',
+        $url,
+    ]);
+
+    $process->setTimeout(300);
+    $process->run();
+
+    if (!$process->isSuccessful()) {
+        Log::error('yt-dlp failed', [
+            'stderr' => $process->getErrorOutput(),
+            'stdout' => $process->getOutput(),
+        ]);
+        return null;
+    }
+
+    $output = trim($process->getOutput());
+
+    return json_decode($output);
+}
 
     /*
     |--------------------------------------------------------------------------
