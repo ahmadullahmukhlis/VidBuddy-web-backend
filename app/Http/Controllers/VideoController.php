@@ -46,7 +46,7 @@ class VideoController extends Controller
      */
     public function extractInfo(Request $request)
     {
-        $url = trim((string) $request->input('url', ''));
+        $url = $this->normalizeVideoUrl((string) $request->input('url', ''));
 
         if ($url === '') {
             return response()->json(['error' => 'URL is required'], 400);
@@ -71,7 +71,7 @@ class VideoController extends Controller
      */
     public function downloadFile(Request $request)
     {
-        $url = trim((string) $request->input('url', ''));
+        $url = $this->normalizeVideoUrl((string) $request->input('url', ''));
         $formatId = trim((string) $request->input('format_id', ''));
 
         if ($url === '') {
@@ -253,7 +253,7 @@ class VideoController extends Controller
      */
     private function fetchVideoData(string $url)
     {
-        $command = "yt-dlp --dump-json --no-playlist " . escapeshellarg($url);
+        $command = "yt-dlp --dump-json --no-playlist --no-warnings " . escapeshellarg($url);
         $result = Process::run($command);
 
         if ($result->failed()) {
@@ -261,6 +261,49 @@ class VideoController extends Controller
         }
 
         return json_decode($result->output());
+    }
+
+    private function normalizeVideoUrl(string $url): string
+    {
+        $url = trim($url);
+
+        if ($url === '') {
+            return '';
+        }
+
+        $parts = parse_url($url);
+
+        if (!is_array($parts) || empty($parts['host'])) {
+            return $url;
+        }
+
+        $host = strtolower($parts['host']);
+        $path = $parts['path'] ?? '';
+        $query = [];
+
+        if (!empty($parts['query'])) {
+            parse_str($parts['query'], $query);
+        }
+
+        if (str_contains($host, 'youtu.be')) {
+            $videoId = trim($path, '/');
+
+            return $videoId !== ''
+                ? "https://www.youtube.com/watch?v={$videoId}"
+                : $url;
+        }
+
+        if (str_contains($host, 'youtube.com') || str_contains($host, 'm.youtube.com')) {
+            if (preg_match('#^/shorts/([^/?#]+)#', $path, $matches)) {
+                return "https://www.youtube.com/watch?v={$matches[1]}";
+            }
+
+            if (!empty($query['v'])) {
+                return "https://www.youtube.com/watch?v={$query['v']}";
+            }
+        }
+
+        return $url;
     }
 
     private function buildInfoResponse($data): array
@@ -302,12 +345,13 @@ class VideoController extends Controller
     {
         return collect($videos)->map(function ($v) {
             $id = $v['id'] ?? null;
+            $url = $this->normalizeVideoUrl($v['url'] ?? '');
 
             return [
                 'id' => $id,
                 'title' => $v['title'] ?? 'Untitled',
                 'thumbnail' => $v['thumbnail'] ?? ($id ? "https://i.ytimg.com/vi/{$id}/hqdefault.jpg" : ''),
-                'url' => $v['url'] ?? ($id ? "https://www.youtube.com/watch?v={$id}" : ''),
+                'url' => $url ?: ($id ? "https://www.youtube.com/watch?v={$id}" : ''),
                 'views' => isset($v['view_count']) ? number_format($v['view_count']) : null,
             ];
         })->values();
