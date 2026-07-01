@@ -55,7 +55,7 @@ class VideoController extends Controller
         $data = $this->fetchVideoData($url);
 
         if (!$data) {
-            return response()->json(['error' => 'Could not extract video info','data'=>$data], 400);
+            return response()->json(['error' => 'Could not extract video info'], 400);
         }
 
         return response()->json($this->buildInfoResponse($data));
@@ -251,21 +251,31 @@ class VideoController extends Controller
     /**
      * Helpers
      */
-  private function fetchVideoData(string $url): ?object
+private function fetchVideoData(string $url): ?object
 {
-    // Changed back to a string command since your server environment requires it
+    // Clean the URL input safely
+    $url = trim($url);
+
+    // Build the command safely using a string configuration
     $command = "yt-dlp --dump-json --no-playlist " . escapeshellarg($url);
-    
-    $result = Process::run($command);
+
+    // Run the command with an unrestricted buffer size to prevent memory crashes
+    $result = Process::key('yt-dlp-fetch')
+        ->buffer(10 * 1024 * 1024) // Allocates a 10MB buffer for the massive JSON string
+        ->run($command);
 
     if ($result->failed()) {
+        // Log the exact system error to your storage/logs/laravel.log file
+        logger()->error("yt-dlp extraction failed", [
+            'exit_code' => $result->exitCode(),
+            'error'     => $result->errorOutput()
+        ]);
         return null;
     }
 
-    // Convert the string output into an object
     $decoded = json_decode($result->output());
 
-    // Ensure json_decode succeeded; otherwise return null
+    // Ensure the payload is a valid object before returning
     return is_object($decoded) ? $decoded : null;
 }
 
