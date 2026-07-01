@@ -253,15 +253,23 @@ class VideoController extends Controller
      */
     private function fetchVideoData(string $url)
     {
-        $command = "yt-dlp --dump-json --no-playlist " . $url;
-        $result = Process::run($command);
+        // Wrap URL safely to prevent shell injection vulnerabilities
+        $command = "yt-dlp --dump-json --no-playlist " . escapeshellarg($url);
+        
+        // Increase system buffer size to handle large video metadata streams safely
+        $result = Process::buffer(15 * 1024 * 1024)->run($command);
 
         if ($result->failed()) {
-            return $request->json(['error' => 'Failed to extract video info', 'details' => $result->errorOutput() ?? $result->output()], 500);
+            // Log the background system error cleanly to your storage/logs/laravel.log
+            logger()->error("yt-dlp core failed", [
+                'error' => $result->errorOutput() ?: $result->output()
+            ]);
+            return null;
         }
 
         return json_decode($result->output());
     }
+
 
     private function buildInfoResponse($data): array
     {
