@@ -257,7 +257,7 @@ class VideoController extends Controller
         $result = Process::run($command);
 
         if ($result->failed()) {
-            return null;
+            return $request->json(['error' => 'Failed to extract video info', 'details' => $result->errorOutput() ?? $result->output()], 500);
         }
 
         return json_decode($result->output());
