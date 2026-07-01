@@ -253,27 +253,53 @@ class VideoController extends Controller
      */
 private function fetchVideoData(string $url): ?object
 {
-    // Clean the URL input safely
     $url = trim($url);
 
-    // Run using array arguments to eliminate character escaping quirks
-    $result = Process::timeout(60) // Safety: Stop hanging threads after 60s
-        ->buffer(15 * 1024 * 1024) // 15MB buffer memory threshold
-        ->run(['yt-dlp', '--dump-json', '--no-playlist', $url]);
+    $result = Process::timeout(60)
+        ->run([
+            'yt-dlp',
+            '--dump-single-json',
+            '--no-playlist',
+            '--no-warnings',
+            '--quiet',
+            $url
+        ]);
 
     if ($result->failed()) {
-        // Safe tracking to your storage/logs/laravel.log file
-        logger()->error("yt-dlp extraction failed", [
-            'exit_code' => $result->exitCode(),
-            'error'     => $result->errorOutput() ?: 'Unknown process failure'
+        logger()->error('yt-dlp failed', [
+            'exit' => $result->exitCode(),
+            'error' => $result->errorOutput()
+        ]);
+
+        return null;
+    }
+
+    $output = trim($result->output());
+
+    // Find first JSON object
+    $start = strpos($output, '{');
+
+    if ($start === false) {
+        logger()->error('No JSON found', [
+            'output' => substr($output, 0, 500)
         ]);
         return null;
     }
 
-    $decoded = json_decode($result->output());
+    $json = substr($output, $start);
 
-    // Ensure the payload is a valid object before returning
-    return is_object($decoded) ? $decoded : null;
+    $decoded = json_decode($json);
+
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        logger()->error('JSON decode failed', [
+            'error' => json_last_error_msg(),
+            'output' => substr($json, 0, 500)
+        ]);
+
+        return null;
+    }
+
+    return $decoded;
 }
 
 
