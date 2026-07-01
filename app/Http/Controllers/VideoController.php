@@ -55,7 +55,7 @@ class VideoController extends Controller
         $data = $this->fetchVideoData($url);
 
         if (!$data) {
-            return response()->json(['error' => 'Could not extract video info'], 400);
+            return response()->json(['error' => 'Could not extract video info','data'=>$data], 400);
         }
 
         return response()->json($this->buildInfoResponse($data));
