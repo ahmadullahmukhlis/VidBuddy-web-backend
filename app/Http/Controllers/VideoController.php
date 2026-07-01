@@ -46,7 +46,7 @@ class VideoController extends Controller
      */
     public function extractInfo(Request $request)
     {
-        $url =  $request->input('url');
+        $url = trim((string) $request->input('url', ''));
 
         if ($url === '') {
             return response()->json(['error' => 'URL is required'], 400);
@@ -251,58 +251,17 @@ class VideoController extends Controller
     /**
      * Helpers
      */
-private function fetchVideoData(string $url): ?object
-{
-    $url = trim($url);
+    private function fetchVideoData(string $url)
+    {
+        $command = "yt-dlp --dump-json --no-playlist " . $url;
+        $result = Process::run($command);
 
-    $result = Process::timeout(60)
-        ->run([
-            'yt-dlp',
-            '--dump-single-json',
-            '--no-playlist',
-            '--no-warnings',
-            '--quiet',
-            $url
-        ]);
+        if ($result->failed()) {
+            return null;
+        }
 
-    if ($result->failed()) {
-        logger()->error('yt-dlp failed', [
-            'exit' => $result->exitCode(),
-            'error' => $result->errorOutput()
-        ]);
-
-        return null;
+        return json_decode($result->output());
     }
-
-    $output = trim($result->output());
-
-    // Find first JSON object
-    $start = strpos($output, '{');
-
-    if ($start === false) {
-        logger()->error('No JSON found', [
-            'output' => substr($output, 0, 500)
-        ]);
-        return null;
-    }
-
-    $json = substr($output, $start);
-
-    $decoded = json_decode($json);
-
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        logger()->error('JSON decode failed', [
-            'error' => json_last_error_msg(),
-            'output' => substr($json, 0, 500)
-        ]);
-
-        return null;
-    }
-
-    return $decoded;
-}
-
-
 
     private function buildInfoResponse($data): array
     {
