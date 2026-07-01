@@ -1,13 +1,27 @@
 FROM php:8.4-fpm-alpine
 
+# =========================
 # System dependencies
+# =========================
 RUN apk add --no-cache \
     nginx supervisor curl zip unzip git bash \
     ffmpeg \
+    python3 \
     libpng-dev libjpeg-turbo-dev freetype-dev libwebp-dev \
     libxml2-dev oniguruma-dev
 
-# PHP extensions (stable for Laravel)
+# =========================
+# Install yt-dlp (FIXED + PERMISSION SAFE)
+# =========================
+RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
+    -o /usr/local/bin/yt-dlp && \
+    chmod 755 /usr/local/bin/yt-dlp && \
+    ls -lah /usr/local/bin/yt-dlp && \
+    /usr/local/bin/yt-dlp --version
+
+# =========================
+# PHP extensions
+# =========================
 RUN docker-php-ext-configure gd \
     --with-freetype \
     --with-jpeg \
@@ -21,46 +35,57 @@ RUN docker-php-ext-configure gd \
     xml \
     fileinfo
 
+# =========================
 # Composer
+# =========================
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www
 COPY . .
 
+# =========================
 # Nginx config
+# =========================
 COPY nginx.conf /etc/nginx/http.d/default.conf
 
-# Laravel required directories + temp fix
+# =========================
+# Laravel folders
+# =========================
 RUN mkdir -p \
     storage/framework/cache/data \
     storage/framework/sessions \
     storage/framework/views \
     storage/framework/temp \
     storage/logs \
-    bootstrap/cache
-    
-    RUN mkdir -p database && touch database/database.sqlite
+    bootstrap/cache && \
+    mkdir -p database && touch database/database.sqlite
 
-# FORCE Laravel temp directory
+# =========================
+# Environment
+# =========================
 ENV TMPDIR=/var/www/storage/framework/temp
-
-# DEBUG MODE (IMPORTANT)
 ENV APP_DEBUG=true
 ENV LOG_LEVEL=debug
 
-# Permissions fix (critical for Render)
+# =========================
+# Permissions (CRITICAL FIX FOR RENDER)
+# =========================
 RUN addgroup -g 1000 www && adduser -G www -u 1000 -D www && \
     chown -R www:www /var/www && \
     chmod -R 777 storage bootstrap/cache
 
-# Install dependencies safely
+# =========================
+# Install Laravel dependencies
+# =========================
 RUN composer install --no-interaction --no-dev --optimize-autoloader
 
 EXPOSE 80
 
-# 🔥 FULL DEBUG STARTUP (SHOW REAL ERRORS)
+# =========================
+# Start services
+# =========================
 CMD sh -c "\
-    echo '--- STARTING LARAVEL DEBUG MODE ---' && \
+    echo '--- STARTING LARAVEL ---' && \
     chmod -R 777 storage bootstrap/cache && \
     php artisan config:clear || true && \
     php artisan cache:clear || true && \
@@ -68,44 +93,3 @@ CMD sh -c "\
     php artisan view:clear || true && \
     php-fpm -D && \
     nginx -g 'daemon off;'"
-
-# FROM php:8.4-fpm-alpine
-
-# RUN apk add --no-cache \
-#     nginx supervisor curl zip unzip python3 ffmpeg \
-#     libpng-dev libjpeg-turbo-dev freetype-dev libwebp-dev \
-#     libxml2-dev
-
-# RUN docker-php-ext-configure gd \
-#     --with-freetype \
-#     --with-jpeg \
-#     --with-webp && \
-#     docker-php-ext-install pdo pdo_mysql bcmath gd
-
-# COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-
-# WORKDIR /var/www
-# COPY . .
-
-# # Copy your custom Nginx configuration
-# COPY nginx.conf /etc/nginx/http.d/default.conf
-
-# # FIX: Force-create the required Laravel directories if they don't exist
-# RUN mkdir -p /var/www/storage/framework/cache/data \
-#     /var/www/storage/framework/sessions \
-#     /var/www/storage/framework/views \
-#     /var/www/storage/logs \
-#     /var/www/bootstrap/cache
-
-# # Setup proper directory permissions
-# RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
-
-# # Install dependencies and optimize production configurations
-# RUN composer install --no-dev --optimize-autoloader
-# RUN php artisan config:cache && php artisan route:cache && php artisan view:cache
-
-# EXPOSE 80
-
-# # Run migrations at startup, then run Nginx and PHP-FPM in the foreground together
-# CMD ["sh", "-c", "chmod -R 775 /var/www/storage /var/www/bootstrap/cache && php artisan config:clear && php artisan route:clear && php-fpm -D && nginx -g 'daemon off;'"]
-
