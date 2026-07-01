@@ -72,39 +72,59 @@ class VideoController extends Controller
     | FETCH VIDEO DATA (FIXED yt-dlp)
     |--------------------------------------------------------------------------
     */
- private function fetchVideoData(string $url)
+    private function fetchVideoData(string $url)
 {
-    if (preg_match('/youtu\.be\/([^?]+)/', $url, $m)) {
+    // 1. Normalize short URLs and remove tracking parameters
+    if (preg_match('/youtu\.be\/([^?&#]+)/', $url, $m)) {
         $url = 'https://www.youtube.com/watch?v=' . $m[1];
     }
 
-    $process = new Process([
-        $this->ytDlpBinary(),
-        '--dump-json',
+    // 2. Strict whitelist validation to ensure it's a valid YouTube URL format
+    if (!preg_match('/^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\/.+$/i', $url)) {
+        Log::warning('Rejected invalid YouTube URL pattern', ['url' => $url]);
+        return null;
+    }
+
+    $binary = $this->ytDlpBinary();
+
+    // 3. Keep arguments securely isolated in an array rather than a single string
+    // This allows Laravel's Process component to escape parameters safely automatically.
+    $command = [
+        $binary,
+        '--dump-single-json',
         '--no-playlist',
         '--no-warnings',
         '--geo-bypass',
-        '--extractor-args',
-        'youtube:player_client=android',
-        $url,
-    ]);
+        '--extractor-args', 'youtube:player_client=android',
+        $url
+    ];
 
-    $process->setTimeout(300);
-    $process->run();
+    // Running via array format removes the need for manual escapeshellarg()
+    $result = Process::timeout(300)->run($command);
 
-    if (!$process->isSuccessful()) {
+    if ($result->failed()) {
         Log::error('yt-dlp failed', [
-            'stderr' => $process->getErrorOutput(),
-            'stdout' => $process->getOutput(),
+            'url'    => $url,
+            'stderr' => $result->errorOutput(),
+            'stdout' => $result->output(),
         ]);
         return null;
     }
 
-    $output = trim($process->getOutput());
+    $output = trim($result->output());
+    if (!$output) {
+        return null;
+    }
 
-    return json_decode($output);
+    // 4. Safely decode to prevent memory faults on broken JSON streams
+    $decoded = json_decode($output);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        Log::error('yt-dlp returned invalid JSON structure', ['error' => json_last_error_msg()]);
+        return null;
+    }
+
+    return $decoded;
 }
-
     /*
     |--------------------------------------------------------------------------
     | DOWNLOAD STREAM (FIXED)
