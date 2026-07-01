@@ -251,24 +251,26 @@ class VideoController extends Controller
     /**
      * Helpers
      */
-    private function fetchVideoData(string $url)
-    {
-        // Wrap URL safely to prevent shell injection vulnerabilities
-        $command = "yt-dlp --dump-json --no-playlist " . escapeshellarg($url);
-        
-        // Increase system buffer size to handle large video metadata streams safely
-        $result = Process::buffer(15 * 1024 * 1024)->run($command);
+   private function fetchVideoData(string $url)
+{
+    // Wrap URL safely to prevent shell injection vulnerabilities
+    $command = "yt-dlp --dump-json --no-playlist " . escapeshellarg($url);
+    
+    // Execute the process directly (Laravel handles standard output buffering automatically)
+    // Optional: Add ->timeout(120) if large streams take a long time to download metadata
+    $result = Process::run($command);
 
-        if ($result->failed()) {
-            // Log the background system error cleanly to your storage/logs/laravel.log
-            logger()->error("yt-dlp core failed", [
-                'error' => $result->errorOutput() ?: $result->output()
-            ]);
-            return null;
-        }
-
-        return json_decode($result->output());
+    if ($result->failed()) {
+        // Log the background system error cleanly to your storage/logs/laravel.log
+        logger()->error("yt-dlp core failed", [
+            'error' => $result->errorOutput() ?: $result->output()
+        ]);
+        return null;
     }
+
+    return json_decode($result->output());
+}
+
 
 
     private function buildInfoResponse($data): array
