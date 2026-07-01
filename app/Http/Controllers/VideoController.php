@@ -46,7 +46,7 @@ class VideoController extends Controller
      */
     public function extractInfo(Request $request)
     {
-        $url = trim((string) $request->input('url', ''));
+        $url =  $request->input('url');
 
         if ($url === '') {
             return response()->json(['error' => 'URL is required'], 400);
