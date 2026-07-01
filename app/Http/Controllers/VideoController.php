@@ -251,17 +251,17 @@ class VideoController extends Controller
     /**
      * Helpers
      */
-    private function fetchVideoData(string $url)
-    {
-        $command = "yt-dlp --dump-json --no-playlist " . escapeshellarg($url);
-        $result = Process::run($command);
+  private function fetchVideoData(string $url): ?object
+{
+    // Pass as an array for built-in security and compatibility
+    $result = Process::run(['yt-dlp', '--dump-json', '--no-playlist', $url]);
 
-        if ($result->failed()) {
-            return null;
-        }
-
-        return json_decode($result->output());
+    if ($result->failed()) {
+        return null;
     }
+
+    return json_decode($result->output());
+}
 
     private function buildInfoResponse($data): array
     {
