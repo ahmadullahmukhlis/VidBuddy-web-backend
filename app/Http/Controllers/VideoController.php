@@ -256,19 +256,16 @@ private function fetchVideoData(string $url): ?object
     // Clean the URL input safely
     $url = trim($url);
 
-    // Build the command safely using a string configuration
-    $command = "yt-dlp --dump-json --no-playlist " . escapeshellarg($url);
-
-    // Run the command with an unrestricted buffer size to prevent memory crashes
-    $result = Process::key('yt-dlp-fetch')
-        ->buffer(10 * 1024 * 1024) // Allocates a 10MB buffer for the massive JSON string
-        ->run($command);
+    // Run using array arguments to eliminate character escaping quirks
+    $result = Process::timeout(60) // Safety: Stop hanging threads after 60s
+        ->buffer(15 * 1024 * 1024) // 15MB buffer memory threshold
+        ->run(['yt-dlp', '--dump-json', '--no-playlist', $url]);
 
     if ($result->failed()) {
-        // Log the exact system error to your storage/logs/laravel.log file
+        // Safe tracking to your storage/logs/laravel.log file
         logger()->error("yt-dlp extraction failed", [
             'exit_code' => $result->exitCode(),
-            'error'     => $result->errorOutput()
+            'error'     => $result->errorOutput() ?: 'Unknown process failure'
         ]);
         return null;
     }
@@ -278,6 +275,7 @@ private function fetchVideoData(string $url): ?object
     // Ensure the payload is a valid object before returning
     return is_object($decoded) ? $decoded : null;
 }
+
 
 
     private function buildInfoResponse($data): array
